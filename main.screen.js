@@ -3,9 +3,9 @@ import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const GAME_WIDTH = SCREEN_WIDTH;
-const GAME_HEIGHT = SCREEN_HEIGHT * 0.96;
-const GROUND_HEIGHT = 70;
+const GAME_WIDTH = Math.min(SCREEN_WIDTH - 24, 440);
+const GAME_HEIGHT = Math.min(SCREEN_HEIGHT * 0.82, 720);
+const GROUND_HEIGHT = 72;
 const GROUND_Y = GAME_HEIGHT - GROUND_HEIGHT;
 const PLAYER_SIZE = 30;
 const PLAYER_X = 70;
@@ -13,6 +13,19 @@ const PLAYER_START_Y = GROUND_Y - PLAYER_SIZE;
 const GRAVITY = 1600;
 const JUMP_FORCE = -620;
 const STORAGE_KEY = 'neon-jump-best-score';
+
+const STAR_POINTS = [
+  { left: 26, top: 52, size: 5, opacity: 0.7 },
+  { left: 120, top: 90, size: 4, opacity: 0.9 },
+  { left: 200, top: 62, size: 4, opacity: 0.8 },
+  { left: 280, top: 110, size: 5, opacity: 0.7 },
+  { left: 335, top: 58, size: 3, opacity: 0.9 },
+  { left: 380, top: 128, size: 4, opacity: 0.8 },
+  { left: 68, top: 150, size: 3, opacity: 0.7 },
+  { left: 168, top: 178, size: 5, opacity: 0.8 },
+  { left: 250, top: 162, size: 3, opacity: 0.9 },
+  { left: 360, top: 190, size: 4, opacity: 0.8 },
+];
 
 function loadBestScore() {
   if (typeof window === 'undefined' || !window.localStorage) return 0;
@@ -246,78 +259,96 @@ export default function MainScreen() {
         style={styles.gameArea}
         onPress={handleJump}
       >
-        <View style={styles.backgroundGlowOne} />
-        <View style={styles.backgroundGlowTwo} />
-        <View style={styles.backgroundGlowThree} />
+        <View style={styles.gameFrame}>
+          <View style={styles.backgroundGlowOne} />
+          <View style={styles.backgroundGlowTwo} />
+          <View style={styles.backgroundGlowThree} />
 
-        <View style={styles.hud}>
-          <View style={styles.scoreBox}>
-            <Text style={styles.scoreLabel}>Score</Text>
-            <Text style={styles.scoreValue}>{score}</Text>
+          {STAR_POINTS.map((star, index) => (
+            <View
+              key={`star-${index}`}
+              style={[
+                styles.star,
+                {
+                  left: star.left,
+                  top: star.top,
+                  width: star.size,
+                  height: star.size,
+                  opacity: star.opacity,
+                },
+              ]}
+            />
+          ))}
+
+          <View style={styles.hud}>
+            <View style={styles.scoreBox}>
+              <Text style={styles.scoreLabel}>Score</Text>
+              <Text style={styles.scoreValue}>{score}</Text>
+            </View>
+
+            <Pressable
+              style={styles.soundButton}
+              onPress={(event) => {
+                event.stopPropagation();
+                setSoundOn((prev) => !prev);
+              }}
+            >
+              <Text style={styles.soundText}>{soundOn ? '🔊' : '🔇'}</Text>
+            </Pressable>
+
+            <View style={styles.scoreBox}>
+              <Text style={styles.scoreLabel}>Best</Text>
+              <Text style={styles.scoreValue}>{bestScore}</Text>
+            </View>
           </View>
 
-          <Pressable
-            style={styles.soundButton}
-            onPress={(event) => {
-              event.stopPropagation();
-              setSoundOn((prev) => !prev);
-            }}
-          >
-            <Text style={styles.soundText}>{soundOn ? '🔊' : '🔇'}</Text>
-          </Pressable>
+          <View style={styles.ground} />
 
-          <View style={styles.scoreBox}>
-            <Text style={styles.scoreLabel}>Best</Text>
-            <Text style={styles.scoreValue}>{bestScore}</Text>
-          </View>
-        </View>
+          {obstacles.map((obstacle) => (
+            <View
+              key={obstacle.id}
+              style={[
+                styles.obstacle,
+                {
+                  width: obstacle.width,
+                  height: obstacle.height,
+                  left: obstacle.x,
+                  top: GROUND_Y - obstacle.height,
+                },
+              ]}
+            />
+          ))}
 
-        <View style={styles.ground} />
-
-        {obstacles.map((obstacle) => (
           <View
-            key={obstacle.id}
             style={[
-              styles.obstacle,
+              styles.player,
               {
-                width: obstacle.width,
-                height: obstacle.height,
-                left: obstacle.x,
-                top: GROUND_Y - obstacle.height,
+                left: PLAYER_X,
+                top: playerY,
               },
             ]}
           />
-        ))}
 
-        <View
-          style={[
-            styles.player,
-            {
-              left: PLAYER_X,
-              top: playerY,
-            },
-          ]}
-        />
+          {phase === 'start' && (
+            <View style={styles.overlay}>
+              <Text style={styles.title}>Neon Jump</Text>
+              <Text style={styles.subtitle}>Tap, click, or press Space</Text>
+              <Pressable style={styles.primaryButton} onPress={startGame}>
+                <Text style={styles.primaryButtonText}>Play</Text>
+              </Pressable>
+            </View>
+          )}
 
-        {phase === 'start' && (
-          <View style={styles.overlay}>
-            <Text style={styles.title}>Neon Jump</Text>
-            <Text style={styles.subtitle}>Tap, click, or press Space</Text>
-            <Pressable style={styles.primaryButton} onPress={startGame}>
-              <Text style={styles.primaryButtonText}>Play</Text>
-            </Pressable>
-          </View>
-        )}
-
-        {phase === 'gameover' && (
-          <View style={styles.overlay}>
-            <Text style={styles.title}>Game Over</Text>
-            <Text style={styles.subtitle}>Score: {score}</Text>
-            <Pressable style={styles.primaryButton} onPress={startGame}>
-              <Text style={styles.primaryButtonText}>Restart</Text>
-            </Pressable>
-          </View>
-        )}
+          {phase === 'gameover' && (
+            <View style={styles.overlay}>
+              <Text style={styles.title}>Game Over</Text>
+              <Text style={styles.subtitle}>Score: {score}</Text>
+              <Pressable style={styles.primaryButton} onPress={startGame}>
+                <Text style={styles.primaryButtonText}>Restart</Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
       </Pressable>
     </View>
   );
@@ -326,100 +357,122 @@ export default function MainScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#050814',
+    backgroundColor: '#040914',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 18,
   },
   gameArea: {
     width: GAME_WIDTH,
     height: GAME_HEIGHT,
-    backgroundColor: '#090d1a',
-    overflow: 'hidden',
-    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 34,
     borderWidth: 1,
-    borderColor: '#46d9ff55',
-    shadowColor: '#00d3ff',
-    shadowOpacity: 0.4,
-    shadowRadius: 20,
+    borderColor: '#5ad9ff66',
+    backgroundColor: '#07111b',
+    shadowColor: '#41d3ff',
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
     shadowOffset: { width: 0, height: 0 },
-    elevation: 10,
+    elevation: 12,
+    overflow: 'hidden',
+  },
+  gameFrame: {
+    width: '100%',
+    height: '100%',
+    position: 'relative',
+    overflow: 'hidden',
+    backgroundColor: '#060d1a',
   },
   backgroundGlowOne: {
     position: 'absolute',
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    backgroundColor: '#3c8bff22',
-    left: -70,
-    top: 40,
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    backgroundColor: '#327dff33',
+    left: -60,
+    top: 30,
   },
   backgroundGlowTwo: {
     position: 'absolute',
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    backgroundColor: '#d949ff22',
-    right: -70,
-    top: 120,
+    width: 320,
+    height: 320,
+    borderRadius: 160,
+    backgroundColor: '#b63dff2e',
+    right: -80,
+    top: 70,
   },
   backgroundGlowThree: {
     position: 'absolute',
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: '#ff4fb722',
-    left: SCREEN_WIDTH * 0.32,
-    bottom: 120,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: '#ff4ea428',
+    left: 110,
+    bottom: 80,
+  },
+  star: {
+    position: 'absolute',
+    backgroundColor: '#d9ecff',
+    borderRadius: 999,
+    shadowColor: '#9CD8FF',
+    shadowOpacity: 0.9,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 0 },
   },
   hud: {
     position: 'absolute',
     top: 18,
-    left: 18,
-    right: 18,
+    left: 16,
+    right: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     zIndex: 8,
   },
   scoreBox: {
-    backgroundColor: '#0d1325cc',
+    backgroundColor: 'rgba(13, 20, 38, 0.8)',
     borderWidth: 1,
-    borderColor: '#5ad5ff55',
-    borderRadius: 14,
+    borderColor: '#68d1ff77',
+    borderRadius: 16,
     paddingHorizontal: 14,
-    paddingVertical: 10,
-    minWidth: 92,
+    paddingVertical: 9,
+    minWidth: 88,
     alignItems: 'center',
+    shadowColor: '#4cc8ff',
+    shadowOpacity: 0.3,
+    shadowRadius: 14,
   },
   scoreLabel: {
     color: '#9ec4ff',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1.2,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.5,
     textTransform: 'uppercase',
   },
   scoreValue: {
-    color: '#f5f9ff',
+    color: '#f4f8ff',
     fontSize: 22,
-    fontWeight: '800',
+    fontWeight: '900',
     marginTop: 2,
   },
   soundButton: {
-    backgroundColor: '#121c30',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    backgroundColor: 'rgba(16, 19, 31, 0.8)',
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#ff63dfaa',
-    shadowColor: '#ff63df',
+    borderColor: '#ff73e3aa',
+    shadowColor: '#ff79f4',
     shadowOpacity: 0.6,
-    shadowRadius: 8,
+    shadowRadius: 10,
     shadowOffset: { width: 0, height: 0 },
   },
   soundText: {
-    fontSize: 20,
+    fontSize: 19,
   },
   ground: {
     position: 'absolute',
@@ -427,71 +480,71 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     height: GROUND_HEIGHT,
-    backgroundColor: '#111827',
-    borderTopWidth: 2,
-    borderTopColor: '#3ad0ff',
-    shadowColor: '#3ad0ff',
-    shadowOpacity: 0.7,
-    shadowRadius: 12,
+    backgroundColor: '#151d2f',
+    borderTopWidth: 3,
+    borderTopColor: '#55d6ff',
+    shadowColor: '#4ccfff',
+    shadowOpacity: 0.5,
+    shadowRadius: 18,
     shadowOffset: { width: 0, height: -2 },
   },
   player: {
     position: 'absolute',
     width: PLAYER_SIZE,
     height: PLAYER_SIZE,
-    backgroundColor: '#52d8ff',
-    borderRadius: 8,
+    backgroundColor: '#6fe7ff',
+    borderRadius: 9,
     borderWidth: 2,
-    borderColor: '#d0f8ff',
-    shadowColor: '#45d7ff',
+    borderColor: '#f3faff',
+    shadowColor: '#69d9ff',
     shadowOpacity: 1,
-    shadowRadius: 12,
+    shadowRadius: 15,
     shadowOffset: { width: 0, height: 0 },
   },
   obstacle: {
     position: 'absolute',
-    backgroundColor: '#ff5edb',
-    borderRadius: 10,
+    backgroundColor: '#ff5be0',
+    borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#ffd1fa',
-    shadowColor: '#ff57dc',
+    borderColor: '#ffd8f8',
+    shadowColor: '#ff5ae0',
     shadowOpacity: 0.9,
-    shadowRadius: 10,
+    shadowRadius: 12,
     shadowOffset: { width: 0, height: 0 },
   },
   overlay: {
     position: 'absolute',
     inset: 0,
-    backgroundColor: 'rgba(4, 6, 15, 0.45)',
+    backgroundColor: 'rgba(4, 7, 17, 0.42)',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 9,
   },
   title: {
-    color: '#f1f5ff',
+    color: '#edf8ff',
     fontSize: 38,
     fontWeight: '900',
-    marginBottom: 12,
-    textShadowColor: '#32d7ff',
+    marginBottom: 10,
+    textShadowColor: '#53d8ff',
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 16,
+    textShadowRadius: 20,
   },
   subtitle: {
-    color: '#b7c7ff',
-    fontSize: 18,
+    color: '#c3d7ff',
+    fontSize: 17,
     fontWeight: '700',
-    marginBottom: 20,
+    marginBottom: 22,
   },
   primaryButton: {
-    backgroundColor: '#5b6dff',
-    paddingHorizontal: 26,
+    backgroundColor: '#5b7cff',
+    paddingHorizontal: 28,
     paddingVertical: 14,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#9ac8ff',
-    shadowColor: '#67d5ff',
-    shadowOpacity: 0.8,
-    shadowRadius: 12,
+    borderColor: '#b0d1ff',
+    shadowColor: '#66d5ff',
+    shadowOpacity: 0.7,
+    shadowRadius: 14,
     shadowOffset: { width: 0, height: 0 },
   },
   primaryButtonText: {
